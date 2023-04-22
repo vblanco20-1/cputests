@@ -50,3 +50,148 @@ class GCDSpec extends AnyFreeSpec with ChiselScalatestTester {
     }
   }
 }
+
+
+class ALUTest extends AnyFreeSpec with ChiselScalatestTester {
+
+  "Alu should work" in {
+    test(new AluWrapped) { dut =>
+
+      dut.io.opcode.poke(0x003100b3.U); //basic addition
+      dut.io.input1.poke(155.U);
+      dut.io.input2.poke(100.U);
+      dut.clock.step ()
+      println("Result is: " + dut.io.out.peekInt ())
+      dut.io.out.expect (255.U)
+    }
+  }
+}
+
+
+class RegTest extends AnyFreeSpec with ChiselScalatestTester {
+
+  "Regs should work" in {
+    test(new RegisterBank) { dut =>
+
+      //write  var to x1
+      dut.io.rsd.poke(0x01.U)
+      dut.io.din.poke(0x0F0F0F0F.U) //basic addition
+
+      dut.clock.step ()
+      dut.io.rs1.poke(0x01.U)
+      println("Result is: " + dut.io.outrs1.peekInt ())
+      dut.io.outrs1.expect (0x0F0F0F0F.U)
+
+      //write  var to x0 (should not work)
+      dut.io.rsd.poke(0x00.U)
+      dut.io.din.poke(0x0F0F0F0F.U) //basic addition
+      dut.clock.step()
+
+      dut.io.rs2.poke(0x00.U)
+      println("Result is: " + dut.io.outrs2.peekInt())
+      dut.io.outrs2.expect(0x0.U)
+      dut.io.outrs1.expect(0x0F0F0F0F.U)
+    }
+  }
+}
+
+
+class TestBlockRam extends Module{
+  val io = IO(new Bundle {
+    val dIn= Input(UInt(32.W))
+    val dOut = Output(UInt(32.W))
+    val addr = Input(UInt(5.W))
+    val wE = Input(Bool())
+  })
+
+  //val mem = Mem(32,UInt(32.W))
+  val mem = Reg(Vec(32, UInt (32.W)))
+
+  val addr = RegNext( io.addr )
+  val out = RegNext( mem(addr) )
+
+  io.dOut := out
+
+  when(io.wE){
+    mem(addr) := io.dIn
+  }
+
+ //when(!rsdzero){
+ //  mem(io.rsd) := io.din
+ //}
+
+ //io.outrs1 := Mux(rs1zero, 0.U,mem(io.rs1))
+ //io.outrs2 := Mux(rs2zero, 0.U,mem(io.rs2))
+}
+
+
+class CPUwRam extends Module{
+  val io = IO(new Bundle {
+
+    val out = Output(UInt(32.W))
+  })
+
+  val inner = Module(new RiscvCPU)
+  val mem = Module(new TestBlockRam)
+
+}
+
+class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
+
+  "CPU should math" in {
+    test(new RiscvCPU).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      //1 empty cycle
+      dut.clock.step() // begins fetch2
+      //simulate loading instruction
+      dut.io.mIn.poke(0x01400113.U) // add x2, 20
+
+      dut.clock.step() // begins decode
+      dut.clock.step() // begins exec
+      dut.clock.step() // begins fetch
+      dut.clock.step() // begins fetch2
+
+      //simulate loading instruction
+      dut.io.mIn.poke(0x03700193.U) // add x2, 55
+      dut.clock.step() // begins exec
+      dut.clock.step() // begins decode
+      dut.clock.step() // begins fetch
+      dut.clock.step() // begins fetch2
+      dut.io.mIn.poke(0x003100b3.U) // add x1, x2,x3,
+      dut.clock.step() // begins decode
+      dut.clock.step() // begins exec
+      dut.clock.step()
+      dut.clock.step() // begins exec
+      //read register to see if it works
+      //println("Result is: " + dut.regs.mem(1).peekInt())
+      //dut.aluout.expect (75.U)
+    }
+  }
+    "CPU test load" in {
+      test(new RiscvCPU).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+        //1 empty cycle
+        dut.clock.step() // begins fetch2
+        //simulate loading instruction
+        dut.io.mIn.poke("h0de00093".U) // li 0xDE
+
+        dut.clock.step() // begins decode
+        dut.clock.step() // begins exec
+        dut.clock.step() // begins fetch
+        dut.clock.step() // begins fetch2
+
+        //simulate loading instruction
+        dut.io.mIn.poke("h0fafa0b7".U) // lui x1 0xFAFA
+        dut.clock.step() // begins decode
+        dut.clock.step() // begins exec
+        dut.clock.step() // begins fetch
+
+
+        //read register to see if it works
+        //println("Result is: " + dut.regs.mem(1).peekInt())
+        //dut.aluout.expect (75.U)
+      }
+  }
+}
+
+
