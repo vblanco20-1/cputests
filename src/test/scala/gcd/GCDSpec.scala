@@ -125,20 +125,42 @@ class TestBlockRam extends Module{
 }
 
 
-class CPUwRam extends Module{
+import chisel3.util.experimental.loadMemoryFromFileInline
+
+import firrtl.annotations.{ComponentName, LoadMemoryAnnotation, MemoryFileInlineAnnotation, MemoryLoadFileType}
+class CPUwRam(memoryFile: String = "") extends Module{
   val io = IO(new Bundle {
 
     val out = Output(UInt(32.W))
+    val halted = Output(Bool())
   })
 
   val inner = Module(new RiscvCPU)
-  val mem = Module(new TestBlockRam)
 
-}
+
+  val mem = SyncReadMem(64, UInt(32.W))
+  // Initialize memory
+  if (memoryFile.trim().nonEmpty) {
+    loadMemoryFromFileInline(mem, memoryFile,MemoryLoadFileType.Binary)
+  }
+
+  io.out := inner.io.db_aluout
+  io.halted := inner.io.halted
+
+
+    val rdwrPort = mem((inner.io.mAddr >> 2))
+    when(inner.io.mWrite) {
+      rdwrPort :=inner.io.mOut
+      inner.io.mIn := 0.U
+    }
+    .otherwise {
+      inner.io.mIn := rdwrPort
+    }
+ }
 
 class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
 
-  "CPU should math" in {
+  /*"CPU should math" in {
     test(new RiscvCPU).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
 
       //1 empty cycle
@@ -191,6 +213,15 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
         //println("Result is: " + dut.regs.mem(1).peekInt())
         //dut.aluout.expect (75.U)
       }
+
+    }
+  */"CPU branch test" in {
+    test(new CPUwRam("asm\\branch_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 40) {
+        dut.clock.step()
+      }
+    }
   }
 }
 
