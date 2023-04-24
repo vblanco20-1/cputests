@@ -131,7 +131,10 @@ import firrtl.annotations.{ComponentName, LoadMemoryAnnotation, MemoryFileInline
 class CPUwRam(memoryFile: String = "") extends Module{
   val io = IO(new Bundle {
 
-    val out = Output(UInt(32.W))
+    val db_r1 = Output(UInt(32.W))
+    val db_r2 = Output(UInt(32.W))
+    val db_pc = Output(UInt(32.W))
+
     val halted = Output(Bool())
   })
 
@@ -144,9 +147,10 @@ class CPUwRam(memoryFile: String = "") extends Module{
     loadMemoryFromFileInline(mem, memoryFile,MemoryLoadFileType.Binary)
   }
 
-  io.out := inner.io.db_aluout
   io.halted := inner.io.halted
-
+  io.db_pc := inner.io.db_pc
+  io.db_r1 := inner.io.db_r1
+  io.db_r2 := inner.io.db_r2
 
     val rdwrPort = mem((inner.io.mAddr >> 2))
     when(inner.io.mWrite) {
@@ -159,68 +163,54 @@ class CPUwRam(memoryFile: String = "") extends Module{
  }
 
 class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
-
-  /*"CPU should math" in {
-    test(new RiscvCPU).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-
-      //1 empty cycle
-      dut.clock.step() // begins fetch2
-      //simulate loading instruction
-      dut.io.mIn.poke(0x01400113.U) // add x2, 20
-
-      dut.clock.step() // begins decode
-      dut.clock.step() // begins exec
-      dut.clock.step() // begins fetch
-      dut.clock.step() // begins fetch2
-
-      //simulate loading instruction
-      dut.io.mIn.poke(0x03700193.U) // add x2, 55
-      dut.clock.step() // begins exec
-      dut.clock.step() // begins decode
-      dut.clock.step() // begins fetch
-      dut.clock.step() // begins fetch2
-      dut.io.mIn.poke(0x003100b3.U) // add x1, x2,x3,
-      dut.clock.step() // begins decode
-      dut.clock.step() // begins exec
-      dut.clock.step()
-      dut.clock.step() // begins exec
-      //read register to see if it works
-      //println("Result is: " + dut.regs.mem(1).peekInt())
-      //dut.aluout.expect (75.U)
-    }
-  }
-    "CPU test load" in {
-      test(new RiscvCPU).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-
-        //1 empty cycle
-        dut.clock.step() // begins fetch2
-        //simulate loading instruction
-        dut.io.mIn.poke("h0de00093".U) // li 0xDE
-
-        dut.clock.step() // begins decode
-        dut.clock.step() // begins exec
-        dut.clock.step() // begins fetch
-        dut.clock.step() // begins fetch2
-
-        //simulate loading instruction
-        dut.io.mIn.poke("h0fafa0b7".U) // lui x1 0xFAFA
-        dut.clock.step() // begins decode
-        dut.clock.step() // begins exec
-        dut.clock.step() // begins fetch
-
-
-        //read register to see if it works
-        //println("Result is: " + dut.regs.mem(1).peekInt())
-        //dut.aluout.expect (75.U)
-      }
-
-    }
-  */"CPU branch test" in {
+  "CPU branch test" in {
     test(new CPUwRam("asm\\branch_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
 
       for (a <- 0 until 40) {
         dut.clock.step()
       }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect (100.U)
+      dut.io.db_r2.expect (100.U)
+      dut.io.db_pc.expect(16.U)
+    }
+  }
+
+  "CPU lui test" in {
+    test(new CPUwRam("asm\\load_imm_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 20) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect("hFDEFDECC".U)
+      dut.io.db_r2.expect(3.U)
+    }
+  }
+
+  "CPU jump test" in {
+    test(new CPUwRam("asm\\jumps_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 40) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect(130.U)
+      dut.io.db_r2.expect(20.U)
+      dut.io.db_pc.expect(48.U)
+    }
+  }
+
+  "CPU loadw test" in {
+    test(new CPUwRam("asm\\load_memory_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 30) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect("hECC".U)
+      dut.io.db_r2.expect("hDEADBABE".U)
+      //dut.io.db_pc.expect(48.U)
     }
   }
 }

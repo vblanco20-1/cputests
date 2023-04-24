@@ -1,6 +1,55 @@
-from riscv_assembler.convert import AssemblyConverter as AC
+#from riscv_assembler.convert import AssemblyConverter as AC
+import binascii
+import subprocess
+import os##
+#convert #= AC(output_mode = 'f', nibble_mode = False, hex_mode = False)###
 
-convert = AC(output_mode = 'f', nibble_mode = False, hex_mode = False)
+def convert_to_bin(file, foutput):
 
-convert(open('adds.s', 'r').read(), "add.txt") 
-convert(open('branch_01.s', 'r').read(), "branch_01.txt") 
+    with open(foutput, 'w') as fo:
+        with open(file, mode="rb") as f:
+            chunk = f.read(4)
+            while chunk:
+                
+                num = int.from_bytes(chunk,'little')
+                binarycode = (format(num,'032b'))
+                #print(binarycode)
+                fo.write(binarycode)
+                fo.write('\n')
+                chunk = f.read(4)
+
+
+asm_cmd = "riscv64-unknown-elf-as {name:}.s -o {name:}.o -march=rv32i"
+bin_cmd = "riscv64-unknown-elf-objcopy -O binary {name:}.o {name:}.bin"
+
+def run_assembler(name):
+    ##assemble file
+    stream = os.popen(asm_cmd.format(name = name))
+    output = stream.read()
+    if output:
+         raise Exception(output) 
+
+    ## build binary properly
+    stream = os.popen(bin_cmd.format(name = name))
+    output = stream.read()
+    if output:
+         raise Exception(output) 
+
+    convert_to_bin(name + '.bin', name + '.txt')
+    
+
+run_assembler('jumps_01')
+run_assembler('adds')
+run_assembler('branch_01')
+run_assembler('load_imm_01')
+run_assembler('load_memory_01')
+#convert_to_bin('jumps_01.bin','jumps_01.txt')
+
+#print(bin(int.from_bytes(open('jumps_01.bin', 'rb').read(), 'little')))
+
+#print((open('jumps_01.bin', 'rb').read()))
+
+#convert(open('adds.s', 'r').read(), "add.txt") 
+#convert(open('branch_01.s', 'r').read(), "branch_01.txt") 
+#convert(open('jumps_01.s', 'r').read(), "jumps_01.txt") 
+#convert(open('load_imm_01.s', 'r').read(), "load_imm_01.txt") 

@@ -78,6 +78,15 @@ class RvInst_B extends Bundle {
   val opcode        = UInt(7.W)
 }
 
+class RvInst_J extends Bundle {
+  val im20    = UInt(1.W)
+  val im10_1    = UInt(10.W)
+  val im11    = UInt(1.W)
+  val im19_12    = UInt(8.W)
+  val rd    = UInt(5.W)
+  val opcode        = UInt(7.W)
+}
+
 class AluWrapped extends Module{
   val io = IO(new Bundle {
     val input1 = Input(UInt(32.W))
@@ -146,7 +155,10 @@ class RiscvCPU extends Module{
     val mOut = Output(UInt(32.W))
     val mAddr = Output(UInt(10.W))
     val halted = Output(Bool())
-    val db_aluout = Output(UInt(32.W))
+
+    val db_r1 = Output(UInt(32.W))
+    val db_r2 = Output(UInt(32.W))
+    val db_pc = Output(UInt(32.W))
   })
   val alu = Module(new Alu)
   val regs = Module(new RegisterBank)
@@ -155,7 +167,8 @@ class RiscvCPU extends Module{
 
   val PC4 = PC + 4.U
   // The state registers
-  val state_fetch  = RegInit(true.B)
+  val state_start  = RegInit(true.B)
+  val state_fetch  = RegInit(false.B)
   val state_fetch2 = RegInit(false.B)
   val state_decode = RegInit(false.B)
   val state_exec = RegInit(false.B)
@@ -167,10 +180,13 @@ class RiscvCPU extends Module{
   val rs2 = RegInit(0.U(5.W))
   val immv = RegInit(0.U(32.W))
   val aluOP = RegInit(0.U(3.W))
+  val din_is_alu = RegInit(false.B)
+  val din_is_mem = RegInit(false.B)
+  val alu2_use_reg = RegInit(false.B)
 
   val branchEnable = RegInit(false.B)
 
-  val alu_in2 = Wire(UInt (32.W))
+  //val alu_in2 = Wire(UInt (32.W))
   val lui_mix = Wire(UInt (32.W))
   val must_halt = Wire(Bool())
   val branch_target = Wire(UInt (32.W))
@@ -181,33 +197,61 @@ class RiscvCPU extends Module{
   val inst_R = io.mIn.asTypeOf(new RvInst_R)
   val inst_U = io.mIn.asTypeOf(new RvInst_U)
   val inst_B = io.mIn.asTypeOf(new RvInst_B)
+  val inst_J = io.mIn.asTypeOf(new RvInst_J)
+
+  //immediate types
+  val sign = Wire(Bool())
+  sign := io.mIn(31);
+
+  val imm_I =  Wire(UInt (32.W))
+  imm_I := Mux(sign,-1.S(20.W).asUInt, 0.U(20.W) ) ## inst_I.imm
+
+  val imm_B =  Wire(UInt (32.W))
+  imm_B := Mux(sign,-1.S(20.W).asUInt, 0.U(20.W) ) ## (inst_B.im11 ## inst_B.imm10_5 ## inst_B.im41 ## 0.U(1.W))
+
+  val imm_U =  Wire(UInt (32.W))
+  imm_U := inst_U.imm ## 0.U(12.W)
+
+  val imm_J =  Wire(UInt (32.W))
+  //imm_J := Mux(sign,-1.S(12.W).asUInt, 0.U(12.W) ) ## inst_J.im19_12 ## inst_J.im11 ## inst_J.im10_1  ## 0.U(1.W)
+  imm_J := Mux(io.mIn(31), -1.S(12.W).asUInt, 0.U(12.W)) ## io.mIn(19,12) ## io.mIn(20) ## io.mIn(30,25) ## io.mIn(24,21) ## 0.U(1.W)
+
+  //not done yet
+  //val imm_S =  Wire(UInt (32.W))
+
+
+
 
   val op = Opcode(inst.opcode)
 
-  state_fetch := state_exec
- // state_fetch2 := state_fetch
+  state_start := 0.U
+  state_fetch := state_exec | state_start
+
   state_decode := state_fetch
   state_exec :=  Mux(must_halt, false.B, state_decode)
   state_halt :=must_halt | state_halt
 
   io.halted := state_halt
   io.mWrite := false.B
-  io.mAddr := Mux(state_fetch, PC, 0.U)
+  io.mAddr := Mux(state_fetch | state_start, PC, Mux(state_exec,alu.io.out,-1.S(32.W).asUInt) )
   io.mOut := 0.U
   io.halted := state_halt
 
+  io.db_pc := PC
+  io.db_r1 :=regs.io.outrs1
+  io.db_r2 :=regs.io.outrs2
+
   alu.io.input1 := regs.io.outrs1
-  alu.io.input2 := alu_in2//Mux(rd === 0.U, imm, regs.io.outrs2)
+  alu.io.input2 := Mux(alu2_use_reg, regs.io.outrs2,immv)
   alu.io.func3 := aluOP
-  regs.io.din := Mux(op === Opcode.lui/*op_LUI*/, lui_mix, alu.io.out)
+  //regs.io.din := Mux(din_is_alu/*op === Opcode.lui*/, lui_mix, alu.io.out)
+  regs.io.din := Mux(din_is_alu, alu.io.out, lui_mix)
 
-  io.db_aluout := alu.io.out
+  regs.io.rs1 := Mux(state_halt, 1.U, rs1)
+  regs.io.rs2 := Mux(state_halt, 2.U, rs2)
+  regs.io.rsd := Mux(state_exec | (state_fetch & din_is_mem), rd, 0.U)
 
-  regs.io.rs1 := rs1
-  regs.io.rs2 := rs2
-  regs.io.rsd := Mux(state_exec, rd, 0.U)
-
-  lui_mix := inst_U.imm ## regs.io.outrs1(11,0)
+  lui_mix := Mux(din_is_mem , io.mIn , immv(31,12) ## regs.io.outrs1(11,0))
   must_halt := false.B
   //val alu_eq = Wire(Boolean)
   //val alu_lt = Wire(Boolean)
@@ -217,16 +261,9 @@ class RiscvCPU extends Module{
   val alu_eq = regs.io.outrs1 === regs.io.outrs2
   val alu_lt = regs.io.outrs1 < regs.io.outrs2
 
-  alu_in2 := 0.U
-  switch(op){
-    is(Opcode.imm){
-      alu_in2 := immv
-    }
-    is(Opcode.reg){
-      alu_in2 := regs.io.outrs2
-    }
-  }
+  alu2_use_reg := alu2_use_reg
 
+  din_is_alu := din_is_alu;
   when(state_decode){
 
 
@@ -239,17 +276,36 @@ class RiscvCPU extends Module{
     rs2 := inst_R.rs2
     rs1 := inst_R.rs1
     rd  := inst_R.rd
+    din_is_mem := false.B
+    din_is_alu := Mux(op === Opcode.lui | op === Opcode.load, false.B, true.B)
+    alu2_use_reg := true.B
     switch(op) {
       is(Opcode.imm) {
         rs2 := 0.U
-        branchEnable := 0.U
-        immv := 0.U ## inst_I.imm
+        //branchEnable := 0.U
+        immv := imm_I
+        alu2_use_reg := false.B
       }
       is(Opcode.br) {
         branchEnable := 1.U
-        val imd = VecInit.fill(20)(inst_B.imm12(0))
-        // imm := (Mux(inst_B.imm12(0), "hFFFFF".U, 0.U  )## inst_B.im11 ## inst_B.imm10_5 ## inst_B.im41) << 1
-        immv := (imd.asUInt ## inst_B.im11 ## inst_B.imm10_5 ## inst_B.im41) << 1
+        immv := imm_B
+      }
+      is(Opcode.lui){
+        immv := imm_U
+        rs1 := inst_R.rd
+      }
+      is(Opcode.jal) {
+        aluOP := 2.U
+        branchEnable := 1.U
+        immv := imm_J
+      }
+      is(Opcode.load) {
+        din_is_mem := true.B
+        rs2 := 0.U
+        aluOP := 0.U
+        branchEnable := 0.U
+        immv := imm_I
+        alu2_use_reg := false.B
       }
     }
   }
@@ -262,6 +318,9 @@ class RiscvCPU extends Module{
     }
     is(1.U) { //bne
       branchCheck := ~alu_eq
+    }
+    is(2.U) { //normal branch, full skip
+      branchCheck := true.B
     }
     is(4.U) { //blt
       branchCheck := alu_lt

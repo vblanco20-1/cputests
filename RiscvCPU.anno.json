@@ -4,6 +4,22 @@
     "emitter":"firrtl.VerilogEmitter"
   },
   {
+    "class":"chisel3.experimental.EnumAnnotations$EnumDefAnnotation",
+    "typeName":"gcd.Opcode",
+    "definition":{
+      "auipc":23,
+      "reg":51,
+      "br":99,
+      "sys":115,
+      "jalr":103,
+      "lui":55,
+      "imm":19,
+      "jal":111,
+      "store":35,
+      "load":3
+    }
+  },
+  {
     "class":"firrtl.transforms.BlackBoxTargetDirAnno",
     "targetDir":"."
   }
