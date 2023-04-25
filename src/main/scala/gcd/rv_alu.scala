@@ -87,6 +87,16 @@ class RvInst_J extends Bundle {
   val opcode        = UInt(7.W)
 }
 
+class RvInst_S extends Bundle {
+  val im11_5    = UInt(7.W)
+  val rs2    = UInt(5.W)
+  val rs1    = UInt(5.W)
+  val func3 = UInt(3.W)
+  val im4    = UInt(5.W)
+  val opcode        = UInt(7.W)
+}
+
+
 class AluWrapped extends Module{
   val io = IO(new Bundle {
     val input1 = Input(UInt(32.W))
@@ -118,6 +128,7 @@ class RegisterBank extends Module{
   })
 
   //val mem = Mem(32,UInt(32.W))
+  /*
   val mem = Reg(Vec(32, UInt (32.W)))
 
   val rsdzero = io.rsd === 0.U;
@@ -129,7 +140,17 @@ class RegisterBank extends Module{
   }
 
   io.outrs1 := Mux(rs1zero, 0.U,mem(io.rs1))
-  io.outrs2 := Mux(rs2zero, 0.U,mem(io.rs2))
+  io.outrs2 := Mux(rs2zero, 0.U,mem(io.rs2))*/
+  val mem = Mem(32,UInt(32.W))
+
+  val rsdzero = io.rsd === 0.U;
+
+  when(!rsdzero) {
+    mem(io.rsd) := io.din
+  }
+
+  io.outrs1 := mem(io.rs1)
+  io.outrs2 := mem(io.rs2)
 }
 
 object Opcode extends ChiselEnum {
@@ -152,6 +173,7 @@ class RiscvCPU extends Module{
   val io = IO(new Bundle {
     val mIn= Input(UInt(32.W))
     val mWrite = Output(Bool())
+    val mMask = Output(Vec(4,Bool()))
     val mOut = Output(UInt(32.W))
     val mAddr = Output(UInt(10.W))
     val halted = Output(Bool())
@@ -178,6 +200,7 @@ class RiscvCPU extends Module{
   val rd =  RegInit(0.U(5.W))
   val rs1 = RegInit(0.U(5.W))
   val rs2 = RegInit(0.U(5.W))
+  val savedOp = RegInit(0.U(32.W))
   val immv = RegInit(0.U(32.W))
   val aluOP = RegInit(0.U(3.W))
   val din_is_alu = RegInit(false.B)
@@ -185,19 +208,23 @@ class RiscvCPU extends Module{
   val alu2_use_reg = RegInit(false.B)
 
   val branchEnable = RegInit(false.B)
-
+  val writeEnable = RegInit(false.B)
   //val alu_in2 = Wire(UInt (32.W))
   val lui_mix = Wire(UInt (32.W))
   val must_halt = Wire(Bool())
   val branch_target = Wire(UInt (32.W))
-  //val imm_mode = Wire( ImmMode())
+
+  val instruction = Wire(UInt(32.W))
+  instruction := Mux(state_decode, io.mIn, savedOp)
+
   //in this stage memory bus contains opcode
-  val inst = io.mIn.asTypeOf(new RvInst)
-  val inst_I = io.mIn.asTypeOf(new RvInst_I)
-  val inst_R = io.mIn.asTypeOf(new RvInst_R)
-  val inst_U = io.mIn.asTypeOf(new RvInst_U)
-  val inst_B = io.mIn.asTypeOf(new RvInst_B)
-  val inst_J = io.mIn.asTypeOf(new RvInst_J)
+  val inst   = instruction.asTypeOf(new RvInst)
+  val inst_I = instruction.asTypeOf(new RvInst_I)
+  val inst_R = instruction.asTypeOf(new RvInst_R)
+  val inst_U = instruction.asTypeOf(new RvInst_U)
+  val inst_B = instruction.asTypeOf(new RvInst_B)
+  val inst_J = instruction.asTypeOf(new RvInst_J)
+  val inst_S = instruction.asTypeOf(new RvInst_S)
 
   //immediate types
   val sign = Wire(Bool())
@@ -217,24 +244,26 @@ class RiscvCPU extends Module{
   imm_J := Mux(io.mIn(31), -1.S(12.W).asUInt, 0.U(12.W)) ## io.mIn(19,12) ## io.mIn(20) ## io.mIn(30,25) ## io.mIn(24,21) ## 0.U(1.W)
 
   //not done yet
-  //val imm_S =  Wire(UInt (32.W))
-
-
-
-
+  val imm_S =  Wire(UInt (32.W))
+  imm_S := Mux(sign,-1.S(20.W).asUInt, 0.U(20.W) ) ## inst_S.im11_5 ## inst_S.im4
   val op = Opcode(inst.opcode)
 
   state_start := 0.U
-  state_fetch := state_exec | state_start
+  state_fetch :=  state_exec | state_start
 
   state_decode := state_fetch
   state_exec :=  Mux(must_halt, false.B, state_decode)
   state_halt :=must_halt | state_halt
 
   io.halted := state_halt
-  io.mWrite := false.B
-  io.mAddr := Mux(state_fetch | state_start, PC, Mux(state_exec,alu.io.out,-1.S(32.W).asUInt) )
-  io.mOut := 0.U
+  io.mWrite := state_exec & writeEnable
+
+  io.mAddr := Mux(state_fetch | state_start, PC, alu.io.out)
+  io.mOut := regs.io.outrs2
+  io.mMask(0) := state_exec & writeEnable
+  io.mMask(1) := state_exec & writeEnable
+  io.mMask(2) := state_exec & writeEnable
+  io.mMask(3) := state_exec & writeEnable
   io.halted := state_halt
 
   io.db_pc := PC
@@ -247,9 +276,9 @@ class RiscvCPU extends Module{
   //regs.io.din := Mux(din_is_alu/*op === Opcode.lui*/, lui_mix, alu.io.out)
   regs.io.din := Mux(din_is_alu, alu.io.out, lui_mix)
 
-  regs.io.rs1 := Mux(state_halt, 1.U, rs1)
-  regs.io.rs2 := Mux(state_halt, 2.U, rs2)
-  regs.io.rsd := Mux(state_exec | (state_fetch & din_is_mem), rd, 0.U)
+  regs.io.rs1 := rs1//Mux(state_halt, 1.U, rs1)
+  regs.io.rs2 := rs2//Mux(state_halt, 2.U, rs2)
+  regs.io.rsd := Mux( (state_exec & !din_is_mem) | (state_fetch & din_is_mem), rd, 0.U)
 
   lui_mix := Mux(din_is_mem , io.mIn , immv(31,12) ## regs.io.outrs1(11,0))
   must_halt := false.B
@@ -265,12 +294,10 @@ class RiscvCPU extends Module{
 
   din_is_alu := din_is_alu;
   when(state_decode){
-
-
+    savedOp := io.mIn
     aluOP :=inst_R.func3
 
-    must_halt := (op === Opcode.sys) && (inst_I.imm === 1.U) && (inst_I.rd === 0.U)  && (inst_I.rs1 === 0.U) && (inst_I.func3 === 0.U)
-
+    must_halt := false.B
     branchEnable := 0.U
     immv := 0.U
     rs2 := inst_R.rs2
@@ -279,6 +306,7 @@ class RiscvCPU extends Module{
     din_is_mem := false.B
     din_is_alu := Mux(op === Opcode.lui | op === Opcode.load, false.B, true.B)
     alu2_use_reg := true.B
+    writeEnable := false.B;
     switch(op) {
       is(Opcode.imm) {
         rs2 := 0.U
@@ -306,6 +334,19 @@ class RiscvCPU extends Module{
         branchEnable := 0.U
         immv := imm_I
         alu2_use_reg := false.B
+      }
+      is(Opcode.store) {
+        rd := 0.U
+        aluOP := 0.U
+        branchEnable := 0.U
+        immv := imm_S
+        alu2_use_reg := false.B
+        writeEnable := true.B;
+      }
+      is(Opcode.sys){
+        must_halt := (inst_I.imm === 1.U) && (inst_I.rd === 0.U)  && (inst_I.rs1 === 0.U) && (inst_I.func3 === 0.U)
+        rs2 := 2.U;
+        rs1 := 1.U;
       }
     }
   }
@@ -338,13 +379,74 @@ class RiscvCPU extends Module{
 
   when(state_exec){
 
-
     PC := Mux(branchEnable & branchCheck, branch_target ,PC4)
   }
 }
+import chisel3.util.experimental.loadMemoryFromFileInline
+
+import firrtl.annotations.{ComponentName, LoadMemoryAnnotation, MemoryFileInlineAnnotation, MemoryLoadFileType}
+
+class BlockRam(memoryFile: String = "") extends Module{
+  val io = IO(new Bundle {
+
+    val addr = Input(UInt(10.W))
+    val write = Input(Bool())
+    val mask = Input(Vec(4, Bool()))
+    val in = Input(UInt(32.W))
+    val out = Output(UInt(32.W))
+
+  })
+
+  val mem = SyncReadMem(64,UInt(32.W))
+  if (memoryFile.trim().nonEmpty) {
+    loadMemoryFromFileInline(mem, memoryFile, MemoryLoadFileType.Binary)
+  }
+  val read = Wire(UInt(32.W))
+  val data = Wire(Vec(4,UInt(8.W)))
+  val adress = io.addr >> 2
+
+  read := mem(adress)
+
+  for (i <- 0 until 4) {
+    data(i) := Mux(io.mask(i), io.in((i + 1) * 8 - 1, i * 8), read((i + 1) * 8 - 1, i * 8))
+  }
+  when(io.write) {
+   // for (i <- 0 until 4)
+    {
+      //when(io.mask(i)) {
+        mem(adress) := data.asUInt//((i+1) * 8 - 1, i* 8) := Mux(io.mask(i) , io.in((i+1) * 8 -1, i* 8) , read((i+1) * 8 -1, i* 8))
+     // }
+    }
+
+    //when(io.mask())
+    //mem.write(io.addr >> 2,io.in)
+    //io.out := 0.U
+  }
+
+  io.out := read
+
+  /*
+  val mem = SyncReadMem(64, Vec(4,UInt(8.W)))
+  if (memoryFile.trim().nonEmpty) {
+    loadMemoryFromFileInline(mem, memoryFile, MemoryLoadFileType.Binary)
+  }
+
+  val in = Wire(Vec(4,UInt(8.W)))
+
+  //copy input int into vector
+  for (i <- 0 until 4) {
+    in(i) := io.in((i + 1) * 8 - 1, i * 8)
+  }
+
+  val adress = io.addr >> 2
+
+  mem.write(adress, in, io.mask)
+  io.out := mem.read(adress, !io.write).asUInt*/
+}
 
 object Hello extends App {
-  emitVerilog (new Alu ())
-  emitVerilog (new RegisterBank ())
+ // emitVerilog (new Alu ())
+  //emitVerilog (new RegisterBank ())
   emitVerilog (new RiscvCPU ())
+  emitVerilog (new BlockRam ("asm\\jumps_01.txt"))
 }

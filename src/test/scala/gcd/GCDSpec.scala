@@ -128,7 +128,8 @@ class TestBlockRam extends Module{
 import chisel3.util.experimental.loadMemoryFromFileInline
 
 import firrtl.annotations.{ComponentName, LoadMemoryAnnotation, MemoryFileInlineAnnotation, MemoryLoadFileType}
-class CPUwRam(memoryFile: String = "") extends Module{
+
+class CPUwRam(memoryFile: String = "") extends Module {
   val io = IO(new Bundle {
 
     val db_r1 = Output(UInt(32.W))
@@ -139,28 +140,20 @@ class CPUwRam(memoryFile: String = "") extends Module{
   })
 
   val inner = Module(new RiscvCPU)
-
-
-  val mem = SyncReadMem(64, UInt(32.W))
-  // Initialize memory
-  if (memoryFile.trim().nonEmpty) {
-    loadMemoryFromFileInline(mem, memoryFile,MemoryLoadFileType.Binary)
-  }
+  val ram   = Module(new BlockRam(memoryFile))
 
   io.halted := inner.io.halted
   io.db_pc := inner.io.db_pc
   io.db_r1 := inner.io.db_r1
   io.db_r2 := inner.io.db_r2
 
-    val rdwrPort = mem((inner.io.mAddr >> 2))
-    when(inner.io.mWrite) {
-      rdwrPort :=inner.io.mOut
-      inner.io.mIn := 0.U
-    }
-    .otherwise {
-      inner.io.mIn := rdwrPort
-    }
- }
+  ram.io.addr := inner.io.mAddr
+  ram.io.mask := inner.io.mMask
+  ram.io.in   := inner.io.mOut
+  ram.io.write := inner.io.mWrite
+
+  inner.io.mIn := ram.io.out
+}
 
 class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
   "CPU branch test" in {
@@ -210,6 +203,19 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
       dut.io.halted.expect(true.B)
       dut.io.db_r1.expect("hECC".U)
       dut.io.db_r2.expect("hDEADBABE".U)
+      //dut.io.db_pc.expect(48.U)
+    }
+  }
+
+  "CPU loads test" in {
+    test(new CPUwRam("asm\\load_store_memory_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 30) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect(0.U)
+      dut.io.db_r2.expect("hFEFEDADA".U)
       //dut.io.db_pc.expect(48.U)
     }
   }

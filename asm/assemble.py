@@ -9,6 +9,8 @@ def convert_to_bin(file, foutput):
     with open(foutput, 'w') as fo:
         with open(file, mode="rb") as f:
             chunk = f.read(4)
+            lines = 0
+            max_lines = 64
             while chunk:
                 
                 num = int.from_bytes(chunk,'little')
@@ -17,6 +19,14 @@ def convert_to_bin(file, foutput):
                 fo.write(binarycode)
                 fo.write('\n')
                 chunk = f.read(4)
+                lines+=1
+            while lines < max_lines:
+                num = 0
+                lines+=1
+                binarycode = (format(num,'032b'))
+                #print(binarycode)
+                fo.write(binarycode)
+                fo.write('\n')
 
 
 asm_cmd = "riscv64-unknown-elf-as {name:}.s -o {name:}.o -march=rv32i"
@@ -43,6 +53,7 @@ run_assembler('adds')
 run_assembler('branch_01')
 run_assembler('load_imm_01')
 run_assembler('load_memory_01')
+run_assembler('load_store_memory_01')
 #convert_to_bin('jumps_01.bin','jumps_01.txt')
 
 #print(bin(int.from_bytes(open('jumps_01.bin', 'rb').read(), 'little')))
