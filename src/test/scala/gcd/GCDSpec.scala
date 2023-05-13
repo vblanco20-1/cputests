@@ -219,6 +219,19 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
       //dut.io.db_pc.expect(48.U)
     }
   }
+
+  "CPU load bytes test" in {
+    test(new CPUwRam("asm\\load_store_memory_02.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 50) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect(0.U)
+      dut.io.db_r2.expect("hDDCCBBAA".U)
+      //dut.io.db_pc.expect(48.U)
+    }
+  }
 }
 
 

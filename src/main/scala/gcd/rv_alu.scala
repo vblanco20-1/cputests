@@ -117,6 +117,70 @@ class AluWrapped extends Module{
 
 }
 
+
+//shifter for the memory adress unit. for load/store words
+class MemShift extends Module {
+  val io = IO(new Bundle {
+
+    val shift = Input(UInt(2.W))
+    val in = Input(UInt(32.W))
+    val out = Output(UInt(32.W))
+  })
+
+  val vin = Wire(Vec(4, UInt(8.W)))
+  val vout =  Wire(Vec(4, UInt(8.W)))
+
+  vin(0) := io.in(7, 0)
+  vin(1) := io.in(15, 8)
+  vin(2) := io.in(23, 16)
+  vin(3) := io.in(31, 24)
+
+
+  vout := vin
+
+  io.out := vout.asUInt
+  switch(io.shift) {
+    is(0.U) {
+      //io.out := io.in
+      vout := vin
+    }
+    is(1.U) {
+      vout(0) :=  vin(3)
+      vout(1) :=  vin(0)
+      vout(2) :=  vin(1)
+      vout(3) :=  vin(2)
+      //io.out(7,0) := io.in(31,24)
+      //io.out(15,8) := io.in(7,0)
+      //io.out(23,16) := io.in(15,8)
+      //io.out(31,24) := io.in(23,16)
+     // io.out := (io.in << 8) ## io.in(31, 24)
+    }
+    is(2.U) {
+      vout(0) := vin(2)
+      vout(1) := vin(3)
+      vout(2) := vin(0)
+      vout(3) := vin(1)
+     // io.out := (io.in << 16) ## io.in(31, 16)
+      //io.out(7, 0) := io.in(23, 16)
+      //io.out(15, 8) := io.in(31, 24)
+      //io.out(23, 16) := io.in(7, 0)
+      //io.out(31, 24) := io.in(15, 8)
+
+    }
+    is(3.U) {
+      vout(0) := vin(1)
+      vout(1) := vin(2)
+      vout(2) := vin(3)
+      vout(3) := vin(0)
+      //io.out := (io.in << 24) ## io.in(31, 8)
+      //io.out(7, 0) := io.in(15, 8)
+      //io.out(15, 8) := io.in(23, 16)
+      //io.out(23, 16) := io.in(31, 24)
+      //io.out(31, 24) := io.in(7, 0)
+    }
+  }
+}
+
 class RegisterBank extends Module{
   val io = IO(new Bundle {
     val din= Input(UInt(32.W))
@@ -186,7 +250,7 @@ class RiscvCPU extends Module{
   })
   val alu = Module(new Alu)
   val regs = Module(new RegisterBank)
-
+  val mshift = Module(new MemShift)
   val PC = RegInit(0.U(32.W))
 
   val PC4 = PC + 4.U
@@ -205,12 +269,14 @@ class RiscvCPU extends Module{
   val savedOp = RegInit(0.U(32.W))
   val immv = RegInit(0.U(32.W))
   val aluOP = RegInit(0.U(3.W))
+  val memOP = RegInit(0.U(3.W))
   val din_is_alu = RegInit(false.B)
   val din_is_mem = RegInit(false.B)
   val alu2_use_reg = RegInit(false.B)
 
   val branchEnable = RegInit(false.B)
   val writeEnable = RegInit(false.B)
+  val writeMask = Wire(Vec(4,Bool()))
   //val alu_in2 = Wire(UInt (32.W))
   val lui_mix = Wire(UInt (32.W))
   val must_halt = Wire(Bool())
@@ -219,8 +285,8 @@ class RiscvCPU extends Module{
   val instruction = Wire(UInt(32.W))
   instruction := Mux(state_decode, io.mIn, savedOp)
 
-  val memoryShift = RegInit(0.U(2.W))
-  val shiftedMem = Wire(UInt(32.W))
+  //val memoryShift = RegInit(0.U(2.W))
+  //val shiftedMem = Wire(UInt(32.W))
 
   //in this stage memory bus contains opcode
   val inst   = instruction.asTypeOf(new RvInst)
@@ -255,6 +321,8 @@ class RiscvCPU extends Module{
   imm_S := Mux(sign,-1.S(20.W).asUInt, 0.U(20.W) ) ## inst_S.im11_5 ## inst_S.im4
   val op = Opcode(inst.opcode)
 
+  val memAddr =  Wire(UInt (32.W))
+
   state_start := 0.U
   state_fetch :=  state_exec | state_start
 
@@ -265,12 +333,14 @@ class RiscvCPU extends Module{
   io.halted := state_halt
   io.mWrite := state_exec & writeEnable
 
-  io.mAddr := Mux(state_fetch | state_start, PC, alu.io.out) >> 2
-  io.mOut := shiftedMem
-  io.mMask(0) := state_exec & writeEnable
-  io.mMask(1) := state_exec & writeEnable
-  io.mMask(2) := state_exec & writeEnable
-  io.mMask(3) := state_exec & writeEnable
+  memAddr :=  Mux(state_fetch | state_start, PC, alu.io.out)
+
+  io.mAddr := memAddr >> 2
+  io.mOut := mshift.io.out
+  io.mMask(0) := state_exec & writeMask(0) & writeEnable
+  io.mMask(1) := state_exec & writeMask(1) & writeEnable
+  io.mMask(2) := state_exec & writeMask(2) & writeEnable
+  io.mMask(3) := state_exec & writeMask(3) & writeEnable
   io.halted := state_halt
 
   io.db_pc := PC
@@ -299,22 +369,33 @@ class RiscvCPU extends Module{
 
   alu2_use_reg := alu2_use_reg
 
-  //shiftedMem := DontCare
-  shiftedMem := regs.io.outrs2
-  //switch(memoryShift) {
-  //  is(0.U) {
-  //    shiftedMem := regs.io.outrs2
-  //  }
-  //  is(1.U) {
-  //    shiftedMem := (regs.io.outrs2 << 8) ## regs.io.outrs2(31,24)
-  //  }
-  //  is(2.U) {
-  //    shiftedMem := (regs.io.outrs2 << 16) ## regs.io.outrs2(31,16)
-  //  }
-  //  is(3.U) {
-  //    shiftedMem := (regs.io.outrs2 << 24) ## regs.io.outrs2(31,8)
-  //  }
-  //}
+  mshift.io.in := regs.io.outrs2
+  mshift.io.shift := memAddr(1,0)
+
+  writeMask(0) := false.B
+  writeMask(1) := false.B
+  writeMask(2) := false.B
+  writeMask(3) := false.B
+  switch(inst_R.func3) {
+    is(0.U) { //store byte
+      writeMask(0) := memAddr(1,0) === 0.U
+      writeMask(1) := memAddr(1,0) === 1.U
+      writeMask(2) := memAddr(1,0) === 2.U
+      writeMask(3) := memAddr(1,0) === 3.U
+    }
+    is(1.U) { //store half
+      writeMask(0) := memAddr(1) === 0.U
+      writeMask(1) := memAddr(1) === 0.U
+      writeMask(2) := memAddr(1) === 1.U
+      writeMask(3) := memAddr(1) === 1.U
+    }
+    is(2.U) { //store word
+      writeMask(0) := true.B
+      writeMask(1) := true.B
+      writeMask(2) := true.B
+      writeMask(3) := true.B
+    }
+  }
 
   din_is_alu := din_is_alu;
   when(state_decode){
@@ -324,7 +405,7 @@ class RiscvCPU extends Module{
 
     savedOp := io.mIn
     aluOP :=inst_R.func3
-
+    memOP := inst_R.func3
     must_halt := false.B
     branchEnable := 0.U
     immv := 0.U
@@ -333,7 +414,7 @@ class RiscvCPU extends Module{
     din_is_alu := Mux(op === Opcode.lui | op === Opcode.load, false.B, true.B)
     alu2_use_reg := true.B
     writeEnable := false.B;
-    memoryShift := 0.U
+    //memoryShift := 0.U
     switch(op) {
       is(Opcode.imm) {
 
@@ -369,7 +450,6 @@ class RiscvCPU extends Module{
         immv := imm_S
         alu2_use_reg := false.B
         writeEnable := true.B;
-        memoryShift := immv(1,0)
       }
       is(Opcode.sys){
         rs2 := 2.U;
@@ -461,6 +541,9 @@ class BlockRam(memoryFile: String = "") extends Module{
   io.out := Mux(addrRom,readROM, readRAM );// read
 
 }
+
+
+
 
 object Hello extends App {
  // emitVerilog (new Alu ())
