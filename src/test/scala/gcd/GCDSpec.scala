@@ -210,7 +210,7 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
   "CPU loads test" in {
     test(new CPUwRam("asm\\load_store_memory_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
 
-      for (a <- 0 until 30) {
+      for (a <- 0 until 50) {
         dut.clock.step()
       }
       dut.io.halted.expect(true.B)
