@@ -10,7 +10,7 @@ def convert_to_bin(file, foutput):
         with open(file, mode="rb") as f:
             chunk = f.read(4)
             lines = 0
-            max_lines = 64
+            max_lines = 255
             while chunk:
                 
                 num = int.from_bytes(chunk,'little')
@@ -31,6 +31,20 @@ def convert_to_bin(file, foutput):
 
 asm_cmd = "riscv64-unknown-elf-as {name:}.s -o {name:}.o -march=rv32i"
 bin_cmd = "riscv64-unknown-elf-objcopy -O binary {name:}.o {name:}.bin"
+c_cmd = "riscv64-linux-gnu-gcc -nostartfiles -nostdlib -s -O1 -o fib.elf -g {name:}.c -T linkscript.lds  -mabi=ilp32 -march=rv32i"
+c_bin_cmd = "riscv64-unknown-elf-objcopy  -O binary {name:}.elf {name:}.bin"
+def compile_c(name):
+    stream = os.popen(c_cmd.format(name = name))
+    output = stream.read()
+    if output:
+         raise Exception(output) 
+          ## build binary properly
+    stream = os.popen(c_bin_cmd.format(name = name))
+    output = stream.read()
+    if output:
+         raise Exception(output) 
+
+    convert_to_bin(name + '.bin', name + '.txt')
 
 def run_assembler(name):
     ##assemble file
@@ -49,12 +63,25 @@ def run_assembler(name):
     
 
 run_assembler('jumps_01')
+run_assembler('jumps_02')
 run_assembler('adds')
 run_assembler('branch_01')
 run_assembler('load_imm_01')
 run_assembler('load_memory_01')
 run_assembler('load_store_memory_01')
 run_assembler('load_store_memory_02')
+
+#assemble entry point
+#stream = os.popen("riscv64-unknown-elf-as entry.s -o entry.o -march=rv32i")
+#output = stream.read()
+#if output:
+ #       raise Exception(output) 
+
+
+
+run_assembler('entry')
+compile_c('fib')
+
 #convert_to_bin('jumps_01.bin','jumps_01.txt')
 
 #print(bin(int.from_bytes(open('jumps_01.bin', 'rb').read(), 'little')))

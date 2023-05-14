@@ -10,7 +10,8 @@ val3: .long -1
 
 main:        
     li x1 , 0xFEFEDADA 
-    sw x1 , 0x0104(x0)   
+    li x3, 0x1000 # ram adress
+    sw x1 , 0x4(x3)   
     add x1 , x0 , x0
-    lw x2 , 0x0104(x0)   
+    lw x2 , 0x4(x3)   
     ebreak 

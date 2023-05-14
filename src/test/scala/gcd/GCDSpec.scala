@@ -194,6 +194,19 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
     }
   }
 
+  "CPU call test" in {
+    test(new CPUwRam("asm\\jumps_02.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 20) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect(4.U)
+      dut.io.db_r2.expect(10.U)
+      dut.io.db_pc.expect(4.U)
+    }
+  }
+
   "CPU loadw test" in {
     test(new CPUwRam("asm\\load_memory_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
 
@@ -207,7 +220,7 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
     }
   }
 
-  "CPU loads test" in {
+  "CPU store/load word test" in {
     test(new CPUwRam("asm\\load_store_memory_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
 
       for (a <- 0 until 50) {
@@ -220,7 +233,7 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
     }
   }
 
-  "CPU load bytes test" in {
+  "CPU store bytes test" in {
     test(new CPUwRam("asm\\load_store_memory_02.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
 
       for (a <- 0 until 50) {
@@ -229,6 +242,19 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
       dut.io.halted.expect(true.B)
       dut.io.db_r1.expect(0.U)
       dut.io.db_r2.expect("hDDCCBBAA".U)
+      //dut.io.db_pc.expect(48.U)
+    }
+  }
+
+  "CPU fibonacci test" in {
+    test(new CPUwRam("asm\\fib.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 300) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect(0.U)
+      dut.io.db_r2.expect("h22".U)
       //dut.io.db_pc.expect(48.U)
     }
   }

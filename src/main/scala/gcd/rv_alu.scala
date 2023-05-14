@@ -24,8 +24,31 @@ class Alu extends Module {
     val out     = Output(UInt(32.W))
   })
   io.out := 0.U
+
+
+  var inputMSB = Mux(io.input1(31) & io.input2(10) , -1.S(20.W).asUInt, 0.U(20.W) )
+
+  //right barrel shifter
+  var rbarrel = Wire(Vec(5,UInt(32.W)))
+  rbarrel(0) := Mux(io.input2(0), inputMSB ## io.input1 >> 1, io.input1 )
+  rbarrel(1) := Mux(io.input2(1), inputMSB ## rbarrel(0) >> 2, rbarrel(0) )
+  rbarrel(2) := Mux(io.input2(2), inputMSB ## rbarrel(1) >> 4, rbarrel(1) )
+  rbarrel(3) := Mux(io.input2(3), inputMSB ## rbarrel(2) >> 8, rbarrel(2) )
+  rbarrel(4) := Mux(io.input2(4), inputMSB ## rbarrel(3) >> 16, rbarrel(3) )
+
+  //left barrel shifter
+  var lbarrel = Wire(Vec(5, UInt(32.W)))
+  lbarrel(0) := Mux(io.input2(0), io.input1 << 1, io.input1)
+  lbarrel(1) := Mux(io.input2(1), lbarrel(0) << 2, lbarrel(0))
+  lbarrel(2) := Mux(io.input2(2), lbarrel(1) << 4, lbarrel(1))
+  lbarrel(3) := Mux(io.input2(3), lbarrel(2) << 8, lbarrel(2))
+  lbarrel(4) := Mux(io.input2(4), lbarrel(3) << 16, lbarrel(3))
+
+
   switch(io.func3) {
     is(0x0.U){ io.out := io.input1 + io.input2 }
+    is(0x1.U){ io.out := rbarrel(4) }
+    is(0x5.U){ io.out := lbarrel(4) }
     is(0x7.U){ io.out := io.input1 & io.input2 }
     is(0x6.U){ io.out := io.input1 ^ io.input2 }
     is(0x4.U){ io.out := io.input1 | io.input2 }
@@ -149,34 +172,18 @@ class MemShift extends Module {
       vout(1) :=  vin(0)
       vout(2) :=  vin(1)
       vout(3) :=  vin(2)
-      //io.out(7,0) := io.in(31,24)
-      //io.out(15,8) := io.in(7,0)
-      //io.out(23,16) := io.in(15,8)
-      //io.out(31,24) := io.in(23,16)
-     // io.out := (io.in << 8) ## io.in(31, 24)
     }
     is(2.U) {
       vout(0) := vin(2)
       vout(1) := vin(3)
       vout(2) := vin(0)
       vout(3) := vin(1)
-     // io.out := (io.in << 16) ## io.in(31, 16)
-      //io.out(7, 0) := io.in(23, 16)
-      //io.out(15, 8) := io.in(31, 24)
-      //io.out(23, 16) := io.in(7, 0)
-      //io.out(31, 24) := io.in(15, 8)
-
     }
     is(3.U) {
       vout(0) := vin(1)
       vout(1) := vin(2)
       vout(2) := vin(3)
       vout(3) := vin(0)
-      //io.out := (io.in << 24) ## io.in(31, 8)
-      //io.out(7, 0) := io.in(15, 8)
-      //io.out(15, 8) := io.in(23, 16)
-      //io.out(23, 16) := io.in(31, 24)
-      //io.out(31, 24) := io.in(7, 0)
     }
   }
 }
@@ -241,7 +248,7 @@ class RiscvCPU extends Module{
     val mWrite = Output(Bool())
     val mMask = Output(Vec(4,Bool()))
     val mOut = Output(UInt(32.W))
-    val mAddr = Output(UInt(10.W))
+    val mAddr = Output(UInt(30.W))
     val halted = Output(Bool())
 
     val db_r1 = Output(UInt(32.W))
@@ -269,12 +276,16 @@ class RiscvCPU extends Module{
   val savedOp = RegInit(0.U(32.W))
   val immv = RegInit(0.U(32.W))
   val aluOP = RegInit(0.U(3.W))
+  val branchOP = RegInit(0.U(3.W))
   val memOP = RegInit(0.U(3.W))
   val din_is_alu = RegInit(false.B)
   val din_is_mem = RegInit(false.B)
   val alu2_use_reg = RegInit(false.B)
 
   val branchEnable = RegInit(false.B)
+  val jumpEnable = RegInit(false.B)
+  val absjumpEnable = RegInit(false.B)
+  val storePC = RegInit(false.B)
   val writeEnable = RegInit(false.B)
   val writeMask = Wire(Vec(4,Bool()))
   //val alu_in2 = Wire(UInt (32.W))
@@ -351,7 +362,7 @@ class RiscvCPU extends Module{
   alu.io.input2 := Mux(alu2_use_reg, regs.io.outrs2,immv)
   alu.io.func3 := aluOP
   //regs.io.din := Mux(din_is_alu/*op === Opcode.lui*/, lui_mix, alu.io.out)
-  regs.io.din := Mux(din_is_alu, alu.io.out, lui_mix)
+  regs.io.din := Mux(storePC, PC4, Mux(din_is_alu, alu.io.out, lui_mix))
 
   regs.io.rs1 := rs1//Mux(state_halt, 1.U, rs1)
   regs.io.rs2 := rs2//Mux(state_halt, 2.U, rs2)
@@ -362,7 +373,7 @@ class RiscvCPU extends Module{
   //val alu_eq = Wire(Boolean)
   //val alu_lt = Wire(Boolean)
 
-  branch_target := PC + immv;
+  branch_target := Mux(absjumpEnable, alu.io.out,Mux(jumpEnable, PC +alu.io.out, PC + immv ))
 
   val alu_eq = regs.io.outrs1 === regs.io.outrs2
   val alu_lt = regs.io.outrs1 < regs.io.outrs2
@@ -405,16 +416,20 @@ class RiscvCPU extends Module{
 
     savedOp := io.mIn
     aluOP :=inst_R.func3
+    branchOP := 0.U
     memOP := inst_R.func3
     must_halt := false.B
     branchEnable := 0.U
+    jumpEnable := 0.U
     immv := 0.U
 
     din_is_mem := false.B
     din_is_alu := Mux(op === Opcode.lui | op === Opcode.load, false.B, true.B)
     alu2_use_reg := true.B
     writeEnable := false.B;
+    storePC := false.B;
     //memoryShift := 0.U
+    absjumpEnable := 0.U
     switch(op) {
       is(Opcode.imm) {
 
@@ -422,17 +437,34 @@ class RiscvCPU extends Module{
         alu2_use_reg := false.B
       }
       is(Opcode.br) {
+        aluOP := 0.U
+        branchOP := inst_R.func3
         branchEnable := 1.U
         immv := imm_B
+        alu2_use_reg := false.B
       }
       is(Opcode.lui){
         immv := imm_U
         rs1 := inst_R.rd
+
       }
       is(Opcode.jal) {
-        aluOP := 2.U
-        branchEnable := 1.U
+        aluOP := 0.U
+        branchEnable := 0.U
+        jumpEnable := 1.U
+        rs1 := 0.U
         immv := imm_J
+        alu2_use_reg := false.B
+        storePC := true.B;
+      }
+      is(Opcode.jalr) {
+        absjumpEnable := 1.U
+        aluOP := 0.U
+        branchEnable := 0.U
+        jumpEnable := 1.U
+        immv := imm_I
+        alu2_use_reg := false.B
+        storePC := true.B;
       }
       is(Opcode.load) {
         din_is_mem := true.B
@@ -463,16 +495,16 @@ class RiscvCPU extends Module{
 
   val branchCheck = Wire(Bool())
   branchCheck := false.B;
-  switch(aluOP) {
+  switch(branchOP) {
     is(0.U){ //beq
       branchCheck := alu_eq
     }
     is(1.U) { //bne
       branchCheck := ~alu_eq
     }
-    is(2.U) { //normal branch, full skip
-      branchCheck := true.B
-    }
+    //is(2.U) { //normal branch, full skip
+    //  branchCheck := true.B
+    //}
     is(4.U) { //blt
       branchCheck := alu_lt
     }
@@ -489,7 +521,7 @@ class RiscvCPU extends Module{
 
   when(state_exec){
 
-    PC := Mux(branchEnable & branchCheck, branch_target ,PC4)
+    PC := Mux( jumpEnable | (branchEnable & branchCheck), branch_target ,PC4)
   }
 }
 import chisel3.util.experimental.loadMemoryFromFileInline
@@ -499,7 +531,7 @@ import firrtl.annotations.{ComponentName, LoadMemoryAnnotation, MemoryFileInline
 class BlockRam(memoryFile: String = "") extends Module{
   val io = IO(new Bundle {
 
-    val addr = Input(UInt(10.W))
+    val addr = Input(UInt(30.W))
     val write = Input(Bool())
     val mask = Input(Vec(4, Bool()))
     val in = Input(UInt(32.W))
@@ -508,26 +540,26 @@ class BlockRam(memoryFile: String = "") extends Module{
   })
 
     // from 0 to 0x00FF
-    val memROM = SyncReadMem(64, UInt(32.W))
+    val memROM = SyncReadMem(255, UInt(32.W))
     if (memoryFile.trim().nonEmpty) {
       loadMemoryFromFileInline(memROM, memoryFile, MemoryLoadFileType.Binary)
     }
     // from 0x00FF to end
-    val memRAM = SyncReadMem(512,Vec(4,UInt(8.W)))
+    val memRAM = SyncReadMem(8192,Vec(4,UInt(8.W)))
 
 
     val readROM = Wire(UInt(32.W))
     val readRAM = Wire(UInt(32.W))
     val data = Wire(Vec(4,UInt(8.W)))
 
-    val adressMasked = (io.addr & 0xFF.U)
+    val adressMasked = (io.addr & (0xFFF.U >> 2))
 
     val addrRom = Reg(Bool())
 
     readROM := memROM(adressMasked)
     readRAM := memRAM(adressMasked).asUInt//.asUInt()
 
-    addrRom := ((io.addr << 2) & 0xFF00.U ) === 0.U
+    addrRom := adressMasked === io.addr//((io.addr << 2) & 0xF000.U ) === 0.U
 
 
     for (i <- 0 until 4) {
