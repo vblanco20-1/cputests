@@ -52,22 +52,6 @@ class GCDSpec extends AnyFreeSpec with ChiselScalatestTester {
 }
 
 
-class ALUTest extends AnyFreeSpec with ChiselScalatestTester {
-
-  "Alu should work" in {
-    test(new AluWrapped) { dut =>
-
-      dut.io.opcode.poke(0x003100b3.U); //basic addition
-      dut.io.input1.poke(155.U);
-      dut.io.input2.poke(100.U);
-      dut.clock.step ()
-      println("Result is: " + dut.io.out.peekInt ())
-      dut.io.out.expect (255.U)
-    }
-  }
-}
-
-
 class RegTest extends AnyFreeSpec with ChiselScalatestTester {
 
   "Regs should work" in {
@@ -154,8 +138,63 @@ class CPUwRam(memoryFile: String = "") extends Module {
 
   inner.io.mIn := ram.io.out
 }
+class AluTest extends AnyFreeSpec with ChiselScalatestTester /*with Matchers */{
 
+
+  val testAddData: List[(UInt, UInt, UInt)] = List[(UInt, UInt, UInt)](
+    (1.U, 2.U, 3.U),
+    (53.U, 2.U, 55.U),
+    (1.U, "hFFFFFFFF".U, 0.U),
+    ("hFFFFFFF1".U, 17.U, 2.U),
+  )
+
+  "ALU add test" in {
+    test(new Alu) { c =>
+
+      testAddData.foreach { data =>
+
+        c.io.mathOP.poke(0.U(3.W))
+        c.io.input1.poke(data._1)
+        c.io.input2.poke(data._2)
+        c.clock.step()
+        c.io.out.expect(data._3)
+      }
+    }
+  }
+
+
+    val testBranchData: List[(UInt, UInt, Bool, UInt)] = List[(UInt, UInt, Bool, UInt)](
+      (2.U, 2.U, true.B, 0.U),
+      (2.U, 3.U, false.B, 0.U),
+      (2.U, 10.U, true.B,4.U),
+      (1.U, "hFFFFFFFF".U, false.B,4.U), // 1 < -1 (signed)
+      (1.U, "hFFFFFFFF".U, true.B,6.U), // 1 < -1 (unsigned)
+    )
+
+    "ALU branch test" in {
+      test(new Alu) { c =>
+
+        testBranchData.foreach { data =>
+
+          //println("Branch test " + data._1 + "?" + data._2 + " op " +data._4 + " = " + data._3)
+
+          c.io.branchOP.poke(data._4)
+          c.io.input1.poke(data._1)
+          c.io.input2.poke(data._2)
+          c.clock.step()
+          c.io.branchOut.expect(data._3)
+
+          println("Branch test " + data._1 + "?" + data._2 + " op " +data._4 + " = " + data._3 + " res: " +c.io.branchOut.peekBoolean () )
+        }
+      }
+  }
+
+
+
+}
 class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
+
+
   "CPU branch test" in {
     test(new CPUwRam("asm\\branch_01.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
 

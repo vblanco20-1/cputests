@@ -9,8 +9,8 @@
   },
   {
     "class":"firrtl.annotations.MemoryFileInlineAnnotation",
-    "target":"~BlockRam|BlockRam>mem",
-    "filename":"asm\\jumps_01.txt",
+    "target":"~BlockRam|BlockRam>memROM",
+    "filename":"fib.txt",
     "hexOrBinary":"b"
   }
 ]
