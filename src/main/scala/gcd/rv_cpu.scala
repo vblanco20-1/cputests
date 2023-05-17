@@ -238,11 +238,12 @@ class RiscvCPU extends Module{
   val savedOp = RegInit(0.U(32.W))
   val immv = RegInit(0.U(32.W))
   val aluOP = RegInit(0.U(3.W))
-  val branchOP = RegInit(0.U(3.W))
   val memOP = RegInit(0.U(3.W))
   val din_is_alu = RegInit(false.B)
   val din_is_mem = RegInit(false.B)
   val alu2_use_reg = RegInit(false.B)
+  val alu_sub = RegInit(false.B)
+
 
   val branchEnable = RegInit(false.B)
   val jumpEnable = RegInit(false.B)
@@ -289,9 +290,10 @@ class RiscvCPU extends Module{
   //imm_J := Mux(sign,-1.S(12.W).asUInt, 0.U(12.W) ) ## inst_J.im19_12 ## inst_J.im11 ## inst_J.im10_1  ## 0.U(1.W)
   imm_J := Mux(io.mIn(31), -1.S(12.W).asUInt, 0.U(12.W)) ## io.mIn(19,12) ## io.mIn(20) ## io.mIn(30,25) ## io.mIn(24,21) ## 0.U(1.W)
 
-  //not done yet
+
   val imm_S =  Wire(UInt (32.W))
   imm_S := Mux(sign,-1.S(20.W).asUInt, 0.U(20.W) ) ## inst_S.im11_5 ## inst_S.im4
+
   val op = Opcode(inst.opcode)
 
   val memAddr =  Wire(UInt (32.W))
@@ -322,8 +324,8 @@ class RiscvCPU extends Module{
 
   alu.io.input1 := regs.io.outrs1
   alu.io.input2 := Mux(alu2_use_reg, regs.io.outrs2,immv)
-  alu.io.mathOP := aluOP
-  alu.io.branchOP := aluOP
+  alu.io.func3 := aluOP
+  alu.io.sub := alu_sub
   //regs.io.din := Mux(din_is_alu/*op === Opcode.lui*/, lui_mix, alu.io.out)
   regs.io.din := Mux(storePC, PC4, Mux(din_is_alu, alu.io.out, lui_mix))
 
@@ -337,9 +339,6 @@ class RiscvCPU extends Module{
   //val alu_lt = Wire(Boolean)
 
   branch_target := Mux(absjumpEnable, alu.io.out,Mux(jumpEnable, PC +alu.io.out, PC + immv ))
-
-  val alu_eq = regs.io.outrs1 === regs.io.outrs2
-  val alu_lt = regs.io.outrs1 < regs.io.outrs2
 
   alu2_use_reg := alu2_use_reg
 
@@ -379,13 +378,12 @@ class RiscvCPU extends Module{
 
     savedOp := io.mIn
     aluOP :=inst_R.func3
-    branchOP := 0.U
     memOP := inst_R.func3
     must_halt := false.B
     branchEnable := 0.U
     jumpEnable := 0.U
     immv := 0.U
-
+    alu_sub := false.B
     din_is_mem := false.B
     din_is_alu := Mux(op === Opcode.lui | op === Opcode.load, false.B, true.B)
     alu2_use_reg := true.B
@@ -394,22 +392,26 @@ class RiscvCPU extends Module{
     //memoryShift := 0.U
     absjumpEnable := 0.U
     switch(op) {
+      is(Opcode.reg){
+
+        alu_sub := inst_R.func7 === "h20".U
+      }
       is(Opcode.imm) {
 
         immv := imm_I
         alu2_use_reg := false.B
+
+        alu_sub := Mux( (inst_I.func3 === 1.U) | (inst_I.func3 === 5.U)  ,inst_R.func7 === "h20".U , false.B)
       }
       is(Opcode.br) {
-        aluOP := 0.U
-        branchOP := inst_R.func3
+        aluOP := inst_R.func3
         branchEnable := 1.U
         immv := imm_B
-        alu2_use_reg := false.B
+        //alu2_use_reg := false.B
       }
       is(Opcode.lui){
         immv := imm_U
         rs1 := inst_R.rd
-
       }
       is(Opcode.jal) {
         aluOP := 0.U
@@ -452,35 +454,9 @@ class RiscvCPU extends Module{
     }
   }
 
-  val branchCheck = Wire(Bool())
-  branchCheck := false.B;
-  switch(branchOP) {
-    is(0.U){ //beq
-      branchCheck := alu_eq
-    }
-    is(1.U) { //bne
-      branchCheck := ~alu_eq
-    }
-    //is(2.U) { //normal branch, full skip
-    //  branchCheck := true.B
-    //}
-    is(4.U) { //blt
-      branchCheck := alu_lt
-    }
-    is(5.U) { //bge
-      branchCheck := ~alu_lt
-    }
-    is(6.U) { //blt U  //todo fix
-      branchCheck := alu_lt
-    }
-    is(7.U) { //bge U //todo fix
-      branchCheck := ~alu_lt
-    }
-  }
-
   when(state_exec){
 
-    PC := Mux( jumpEnable | (branchEnable & branchCheck), branch_target ,PC4)
+    PC := Mux( jumpEnable | (branchEnable & alu.io.branchOut ), branch_target ,PC4)
   }
 }
 import chisel3.util.experimental.loadMemoryFromFileInline

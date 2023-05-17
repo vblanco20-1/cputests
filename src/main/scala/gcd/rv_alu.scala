@@ -14,13 +14,12 @@ class Alu extends Module {
   val io = IO(new Bundle {
     val input1    = Input(UInt(32.W))
     val input2    = Input(UInt(32.W))
-    val mathOP     = Input(UInt(3.W))
-    val branchOP = Input(UInt(3.W))
+    val func3     = Input(UInt(3.W))
+    val sub     = Input(Bool())
     val out     = Output(UInt(32.W))
     val branchOut     = Output(Bool())
   })
   io.out := 0.U
-
 
   var inputMSB = Mux(io.input1(31) & io.input2(10) , -1.S(20.W).asUInt, 0.U(20.W) )
 
@@ -56,7 +55,7 @@ class Alu extends Module {
   lbarrel(4) := Mux(io.input2(4), lbarrel(3) << 16, lbarrel(3))
 
 
-  switch(io.mathOP) {
+  switch(io.func3) {
     is(0x0.U){ io.out := io.input1 + io.input2 }
     //is(0x1.U) { io.out := flippedOut  }
     //is(0x5.U) { io.out := flippedOut  }
@@ -78,7 +77,7 @@ class Alu extends Module {
 
   io.branchOut := false.B;
 
-  switch(io.branchOP) {
+  switch(io.func3) {
     is(0.U) { //beq
       io.branchOut := eq
     }
@@ -96,43 +95,6 @@ class Alu extends Module {
     }
     is(7.U) { //bge U
       io.branchOut := ~ltu
-    }
-  }
-}
-
-class BranchAlu extends Module {
-  val io = IO(new Bundle {
-    val input1 = Input(UInt(32.W))
-    val input2 = Input(UInt(32.W))
-    val func3 = Input(UInt(3.W))
-    val out = Output(Bool())
-  })
-
-  val aluminus = Wire(UInt(33.W))
-
-  aluminus := ( true.B ## io.input1) + ( false.B ## ~io.input2) + (-1.S(33.U).asUInt)
-
-  val eq = aluminus === 0.U
-  val lt = Mux( (io.input1(31) ^ io.input2(31)), io.input1(31), aluminus(32)  )
-  val ltu = aluminus(32)
-  switch(io.func3) {
-    is(0.U) { //beq
-      io.out := eq
-    }
-    is(1.U) { //bne
-      io.out := ~eq
-    }
-    is(4.U) { //blt
-      io.out := lt
-    }
-    is(5.U) { //bge
-      io.out := ~lt
-    }
-    is(6.U) { //blt U
-      io.out := ltu
-    }
-    is(7.U) { //bge U
-      io.out := ~ltu
     }
   }
 }

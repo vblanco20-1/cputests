@@ -150,10 +150,11 @@ class AluTest extends AnyFreeSpec with ChiselScalatestTester /*with Matchers */{
 
   "ALU add test" in {
     test(new Alu) { c =>
-
+      c.io.sub.poke(false.B)
+      c.io.func3.poke(0.U(3.W))
       testAddData.foreach { data =>
 
-        c.io.mathOP.poke(0.U(3.W))
+
         c.io.input1.poke(data._1)
         c.io.input2.poke(data._2)
         c.clock.step()
@@ -173,12 +174,12 @@ class AluTest extends AnyFreeSpec with ChiselScalatestTester /*with Matchers */{
 
     "ALU branch test" in {
       test(new Alu) { c =>
-
+        c.io.sub.poke(false.B)
         testBranchData.foreach { data =>
 
           //println("Branch test " + data._1 + "?" + data._2 + " op " +data._4 + " = " + data._3)
 
-          c.io.branchOP.poke(data._4)
+          c.io.func3.poke(data._4)
           c.io.input1.poke(data._1)
           c.io.input2.poke(data._2)
           c.clock.step()
