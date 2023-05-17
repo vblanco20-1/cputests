@@ -188,6 +188,35 @@ class AluTest extends AnyFreeSpec with ChiselScalatestTester /*with Matchers */{
           println("Branch test " + data._1 + "?" + data._2 + " op " +data._4 + " = " + data._3 + " res: " +c.io.branchOut.peekBoolean () )
         }
       }
+    }
+
+  val testShiftData: List[(UInt, UInt,UInt ,Bool ,UInt)] = List[(UInt, UInt,UInt,Bool , UInt)](
+    ( "hFFFFFFFF".U, 1.U, 5.U,  true.B ,"hFFFFFFFF".U), // arith sr
+    ( "hFFFFFFFF".U, 1.U, 5.U,  false.B ,"h7FFFFFFF".U),
+    ( "h00000002".U, 1.U, 5.U,  false.B ,"h00000001".U),
+    ( "h00080808".U, 3.U, 5.U,  false.B ,"h00010101".U),
+    ( "h00010101".U, 15.U, 1.U, false.B ,"h80808000".U),
+    ( "h80808000".U, 15.U, 5.U, false.B ,"h00010101".U),
+    ( 0.U, 31.U, 5.U, false.B ,0.U),
+    ( 0.U, 31.U, 1.U, false.B ,0.U),
+    ( 0.U, 31.U, 5.U, true.B, 0.U),
+    ( 0.U, 31.U, 1.U, true.B, 0.U),
+  )
+
+  "ALU shift test" in {
+    test(new Alu) { c =>
+      testShiftData.foreach { data =>
+
+        c.io.func3.poke(data._3)
+        c.io.input1.poke(data._1)
+        c.io.input2.poke(data._2)
+        c.io.sub.poke(data._4)
+        c.clock.step()
+        c.io.out.expect(data._5)
+
+        println("Shift test " + data._1 + "?" + data._2 + data._3 + data._4 + " res: " + data._5  + c.io.out.peekInt())
+      }
+    }
   }
 
 
