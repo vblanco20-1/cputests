@@ -14,13 +14,29 @@ SECTIONS {
          .rodata :ALIGN(4) {
               * (.rodata);
         } : phdr_flash
-        . = 0x00001000;
-        .data : { * (.data); } : phdr_ram
+
+        .riscv.attributes :ALIGN(4) {
+              * (.riscv.attributes);
+        } : phdr_flash
+
+         .comment :ALIGN(4) {
+              * (.comment);
+        } : phdr_flash
+
+         .got :ALIGN(4) {
+              * (.got);
+        } : phdr_flash
+          .dynamic :ALIGN(4) {
+              * (.dynamic);
+        } : phdr_flash
+
+        . = 0x00010000;
+       /* .data : { * (.data); } : phdr_ram*/
        
         .bss : { *(.bss) }  : phdr_ram
 }
 MEMORY
 {
-    ROM (rx) : ORIGIN = 0, LENGTH = 256
-    RAM (wx) : org = 0x000001000, len = 256
+    ROM (rx) : ORIGIN = 0, LENGTH = 65535
+    RAM (wx) : org = 0x000010000, LENGTH = 65535
 }

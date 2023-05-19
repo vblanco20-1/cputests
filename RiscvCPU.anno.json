@@ -22,33 +22,5 @@
   {
     "class":"firrtl.transforms.BlackBoxTargetDirAnno",
     "targetDir":"."
-  },
-  {
-    "class":"firrtl.transforms.CombinationalPath",
-    "sink":"~RiscvCPU|RiscvCPU>io_mMask_2",
-    "sources":[
-      "~RiscvCPU|RiscvCPU>io_mIn"
-    ]
-  },
-  {
-    "class":"firrtl.transforms.CombinationalPath",
-    "sink":"~RiscvCPU|RiscvCPU>io_mMask_0",
-    "sources":[
-      "~RiscvCPU|RiscvCPU>io_mIn"
-    ]
-  },
-  {
-    "class":"firrtl.transforms.CombinationalPath",
-    "sink":"~RiscvCPU|RiscvCPU>io_mMask_1",
-    "sources":[
-      "~RiscvCPU|RiscvCPU>io_mIn"
-    ]
-  },
-  {
-    "class":"firrtl.transforms.CombinationalPath",
-    "sink":"~RiscvCPU|RiscvCPU>io_mMask_3",
-    "sources":[
-      "~RiscvCPU|RiscvCPU>io_mIn"
-    ]
   }
 ]

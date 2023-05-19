@@ -4,7 +4,7 @@
     addi x2 , x0, 0xBB 
     addi x3 , x0, 0xCC
     addi x4 , x0, 0xDD 
-    li x6, 0x1000 # ram adress
+    li x6, 0x10000 # ram adress
     sb x1 , 0x0(x6) # store one bit at a time
     sb x2 , 0x1(x6)  
     sb x3 , 0x2(x6)  

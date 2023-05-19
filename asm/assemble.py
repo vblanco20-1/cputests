@@ -31,7 +31,7 @@ def convert_to_bin(file, foutput):
 
 asm_cmd = "riscv64-unknown-elf-as {name:}.s -o {name:}.o -march=rv32i"
 bin_cmd = "riscv64-unknown-elf-objcopy -O binary {name:}.o {name:}.bin"
-c_cmd = "riscv64-linux-gnu-gcc -nostartfiles -nostdlib -s -O1 -o fib.elf -g {name:}.c -T linkscript.lds  -mabi=ilp32 -march=rv32i"
+c_cmd = "riscv64-linux-gnu-gcc -nostartfiles -nostdlib -static -s -O1 -o fib.elf -g {name:}.c -T linkscript.lds  -mabi=ilp32 -march=rv32i -W -s"
 c_bin_cmd = "riscv64-unknown-elf-objcopy  -O binary {name:}.elf {name:}.bin"
 def compile_c(name):
     stream = os.popen(c_cmd.format(name = name))
