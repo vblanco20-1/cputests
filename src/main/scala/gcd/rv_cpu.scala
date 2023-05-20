@@ -186,6 +186,12 @@ class RiscvCPU extends Module{
     val mAddr = Output(UInt(30.W))
     val halted = Output(Bool())
 
+    val csr_data = Output(UInt(32.W))
+    val csr_read = Input(UInt(32.W))
+    val csr_id = Output(UInt(12.W))
+    val csr_write = Output(Bool())
+    val csr_newInst  = Output(Bool())
+
     val db_r1 = Output(UInt(32.W))
     val db_r2 = Output(UInt(32.W))
     val db_pc = Output(UInt(32.W))
@@ -217,6 +223,9 @@ class RiscvCPU extends Module{
   val alu2_use_reg = RegInit(false.B)
   val alu_sub = RegInit(false.B)
 
+
+  val csr_load = RegInit(false.B)
+  val csr_store = RegInit(false.B)
 
   val branchEnable = RegInit(false.B)
   val jumpEnable = RegInit(false.B)
@@ -274,7 +283,14 @@ class RiscvCPU extends Module{
 
   state_decode := (state_exec & prefetch) | state_fetch
   state_exec :=  Mux(must_halt, false.B, state_decode)
-  state_halt :=must_halt | state_halt
+  state_halt := must_halt | state_halt
+
+  io.csr_newInst := state_exec; //update the  instruction counters at exec stage for CSR
+  io.csr_data := regs.io.outrs1
+  //io.csr_read = Input(UInt(32.W))
+  io.csr_id := immv(11,0)///Output(UInt(12.W))
+  io.csr_write := csr_store & state_exec
+
 
   io.halted := state_halt
   io.mWrite := state_exec & writeEnable
@@ -294,10 +310,10 @@ class RiscvCPU extends Module{
   io.db_r2 :=regs.io.outrs2
 
   alu.io.input1 := regs.io.outrs1
-  alu.io.input2 := Mux(alu2_use_reg, regs.io.outrs2,immv)
+  alu.io.input2 :=  Mux(alu2_use_reg, regs.io.outrs2,immv)
   alu.io.func3 := aluOP
   alu.io.sub := alu_sub
-  regs.io.din := Mux(storePC, PC4, Mux(din_is_alu, alu.io.out, lui_mix))
+  regs.io.din := Mux(storePC, PC4, Mux(din_is_alu, alu.io.out, Mux(csr_load, io.csr_read,lui_mix)))
 
   regs.io.rs1 := rs1
   regs.io.rs2 := rs2
@@ -344,13 +360,13 @@ class RiscvCPU extends Module{
     rd := inst_R.rd
 
     aluOP :=inst_R.func3
-    must_halt := false.B
+    //must_halt := false.B
     branchEnable := 0.U
     jumpEnable := 0.U
     immv := 0.U
     alu_sub := false.B
     din_is_mem := false.B
-    din_is_alu := Mux(op === Opcode.lui | op === Opcode.load, false.B, true.B)
+    din_is_alu := Mux(op === Opcode.lui | op === Opcode.load | op === Opcode.sys, false.B, true.B)
     alu2_use_reg := true.B
     writeEnable := false.B;
     storePC := false.B;
@@ -416,13 +432,31 @@ class RiscvCPU extends Module{
         writeEnable := true.B;
       }
       is(Opcode.sys){
-        rs2 := 2.U;
-        rs1 := 1.U;
+
+        val csrrw = inst_I.func3(1,0) === 0.U
+        val csrrs = inst_I.func3(1,0) === 1.U
+        val csrrc = inst_I.func3(1,0) === 2.U
+
+        csr_load := !(inst_I.rd === 0.U)
+        csr_store := !(inst_I.rs1 === 0.U)
+
+
+        //csr adress will be the immediate bits of type I
+        immv := imm_I
+
         must_halt := (inst_I.imm === 1.U) && (inst_I.rd === 0.U)  && (inst_I.rs1 === 0.U) && (inst_I.func3 === 0.U)
       }
     }
   }
+
+  when(state_halt){
+    rs2 := 2.U;
+    rs1 := 1.U;
+  }
+
   branch_target := Mux(absjumpEnable, alu.io.adderOut, PC + Mux(jumpEnable, alu.io.adderOut,immv ))
+
+
 
   when(state_exec){
 

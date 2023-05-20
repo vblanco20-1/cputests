@@ -1,14 +1,14 @@
 module BlockRam(
   input         clock,
   input         reset,
-  input  [29:0] io_addr, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 432:14]
-  input         io_write, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 432:14]
-  input         io_mask_0, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 432:14]
-  input         io_mask_1, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 432:14]
-  input         io_mask_2, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 432:14]
-  input         io_mask_3, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 432:14]
-  input  [31:0] io_in, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 432:14]
-  output [31:0] io_out // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 432:14]
+  input  [29:0] io_addr, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 467:14]
+  input         io_write, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 467:14]
+  input         io_mask_0, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 467:14]
+  input         io_mask_1, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 467:14]
+  input         io_mask_2, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 467:14]
+  input         io_mask_3, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 467:14]
+  input  [31:0] io_in, // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 467:14]
+  output [31:0] io_out // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 467:14]
 );
 `ifdef RANDOMIZE_MEM_INIT
   reg [31:0] _RAND_2;
@@ -29,123 +29,123 @@ module BlockRam(
   reg [31:0] _RAND_13;
   reg [31:0] _RAND_14;
 `endif // RANDOMIZE_REG_INIT
-  reg [31:0] memROM [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 443:29]
-  wire  memROM_readROM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 443:29]
-  wire [13:0] memROM_readROM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 443:29]
-  wire [31:0] memROM_readROM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 443:29]
+  reg [31:0] memROM [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 478:29]
+  wire  memROM_readROM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 478:29]
+  wire [13:0] memROM_readROM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 478:29]
+  wire [31:0] memROM_readROM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 478:29]
   reg  memROM_readROM_MPORT_en_pipe_0;
   reg [13:0] memROM_readROM_MPORT_addr_pipe_0;
-  reg [7:0] memRAM_0 [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_0_readRAM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [13:0] memRAM_0_readRAM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [7:0] memRAM_0_readRAM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [7:0] memRAM_0_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [13:0] memRAM_0_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_0_MPORT_mask; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_0_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+  reg [7:0] memRAM_0 [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_0_readRAM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [13:0] memRAM_0_readRAM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [7:0] memRAM_0_readRAM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [7:0] memRAM_0_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [13:0] memRAM_0_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_0_MPORT_mask; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_0_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
   reg  memRAM_0_readRAM_MPORT_en_pipe_0;
   reg [13:0] memRAM_0_readRAM_MPORT_addr_pipe_0;
-  reg [7:0] memRAM_1 [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_1_readRAM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [13:0] memRAM_1_readRAM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [7:0] memRAM_1_readRAM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [7:0] memRAM_1_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [13:0] memRAM_1_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_1_MPORT_mask; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_1_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+  reg [7:0] memRAM_1 [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_1_readRAM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [13:0] memRAM_1_readRAM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [7:0] memRAM_1_readRAM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [7:0] memRAM_1_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [13:0] memRAM_1_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_1_MPORT_mask; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_1_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
   reg  memRAM_1_readRAM_MPORT_en_pipe_0;
   reg [13:0] memRAM_1_readRAM_MPORT_addr_pipe_0;
-  reg [7:0] memRAM_2 [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_2_readRAM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [13:0] memRAM_2_readRAM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [7:0] memRAM_2_readRAM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [7:0] memRAM_2_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [13:0] memRAM_2_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_2_MPORT_mask; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_2_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+  reg [7:0] memRAM_2 [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_2_readRAM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [13:0] memRAM_2_readRAM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [7:0] memRAM_2_readRAM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [7:0] memRAM_2_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [13:0] memRAM_2_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_2_MPORT_mask; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_2_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
   reg  memRAM_2_readRAM_MPORT_en_pipe_0;
   reg [13:0] memRAM_2_readRAM_MPORT_addr_pipe_0;
-  reg [7:0] memRAM_3 [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_3_readRAM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [13:0] memRAM_3_readRAM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [7:0] memRAM_3_readRAM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [7:0] memRAM_3_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire [13:0] memRAM_3_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_3_MPORT_mask; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
-  wire  memRAM_3_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+  reg [7:0] memRAM_3 [0:16383]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_3_readRAM_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [13:0] memRAM_3_readRAM_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [7:0] memRAM_3_readRAM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [7:0] memRAM_3_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire [13:0] memRAM_3_MPORT_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_3_MPORT_mask; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
+  wire  memRAM_3_MPORT_en; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
   reg  memRAM_3_readRAM_MPORT_en_pipe_0;
   reg [13:0] memRAM_3_readRAM_MPORT_addr_pipe_0;
-  wire [29:0] adressMasked = io_addr & 30'h3fff; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 455:33]
-  reg  addrRom; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 457:22]
+  wire [29:0] adressMasked = io_addr & 30'h3fff; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 490:33]
+  reg  addrRom; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 492:22]
   wire [31:0] readRAM = {memRAM_3_readRAM_MPORT_data,memRAM_2_readRAM_MPORT_data,memRAM_1_readRAM_MPORT_data,
-    memRAM_0_readRAM_MPORT_data}; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 460:37]
-  wire [31:0] readROM = memROM_readROM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 451:23 459:13]
+    memRAM_0_readRAM_MPORT_data}; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 495:37]
+  wire [31:0] readROM = memROM_readROM_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 486:23 494:13]
   assign memROM_readROM_MPORT_en = memROM_readROM_MPORT_en_pipe_0;
   assign memROM_readROM_MPORT_addr = memROM_readROM_MPORT_addr_pipe_0;
-  assign memROM_readROM_MPORT_data = memROM[memROM_readROM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 443:29]
+  assign memROM_readROM_MPORT_data = memROM[memROM_readROM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 478:29]
   assign memRAM_0_readRAM_MPORT_en = memRAM_0_readRAM_MPORT_en_pipe_0;
   assign memRAM_0_readRAM_MPORT_addr = memRAM_0_readRAM_MPORT_addr_pipe_0;
-  assign memRAM_0_readRAM_MPORT_data = memRAM_0[memRAM_0_readRAM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+  assign memRAM_0_readRAM_MPORT_data = memRAM_0[memRAM_0_readRAM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
   assign memRAM_0_MPORT_data = io_in[7:0];
   assign memRAM_0_MPORT_addr = adressMasked[13:0];
   assign memRAM_0_MPORT_mask = io_mask_0;
   assign memRAM_0_MPORT_en = 1'h1;
   assign memRAM_1_readRAM_MPORT_en = memRAM_1_readRAM_MPORT_en_pipe_0;
   assign memRAM_1_readRAM_MPORT_addr = memRAM_1_readRAM_MPORT_addr_pipe_0;
-  assign memRAM_1_readRAM_MPORT_data = memRAM_1[memRAM_1_readRAM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+  assign memRAM_1_readRAM_MPORT_data = memRAM_1[memRAM_1_readRAM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
   assign memRAM_1_MPORT_data = io_in[15:8];
   assign memRAM_1_MPORT_addr = adressMasked[13:0];
   assign memRAM_1_MPORT_mask = io_mask_1;
   assign memRAM_1_MPORT_en = 1'h1;
   assign memRAM_2_readRAM_MPORT_en = memRAM_2_readRAM_MPORT_en_pipe_0;
   assign memRAM_2_readRAM_MPORT_addr = memRAM_2_readRAM_MPORT_addr_pipe_0;
-  assign memRAM_2_readRAM_MPORT_data = memRAM_2[memRAM_2_readRAM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+  assign memRAM_2_readRAM_MPORT_data = memRAM_2[memRAM_2_readRAM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
   assign memRAM_2_MPORT_data = io_in[23:16];
   assign memRAM_2_MPORT_addr = adressMasked[13:0];
   assign memRAM_2_MPORT_mask = io_mask_2;
   assign memRAM_2_MPORT_en = 1'h1;
   assign memRAM_3_readRAM_MPORT_en = memRAM_3_readRAM_MPORT_en_pipe_0;
   assign memRAM_3_readRAM_MPORT_addr = memRAM_3_readRAM_MPORT_addr_pipe_0;
-  assign memRAM_3_readRAM_MPORT_data = memRAM_3[memRAM_3_readRAM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+  assign memRAM_3_readRAM_MPORT_data = memRAM_3[memRAM_3_readRAM_MPORT_addr]; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
   assign memRAM_3_MPORT_data = io_in[31:24];
   assign memRAM_3_MPORT_addr = adressMasked[13:0];
   assign memRAM_3_MPORT_mask = io_mask_3;
   assign memRAM_3_MPORT_en = 1'h1;
-  assign io_out = addrRom ? readROM : readRAM; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 473:16]
+  assign io_out = addrRom ? readROM : readRAM; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 508:16]
   always @(posedge clock) begin
     memROM_readROM_MPORT_en_pipe_0 <= 1'h1;
     if (1'h1) begin
       memROM_readROM_MPORT_addr_pipe_0 <= adressMasked[13:0];
     end
     if (memRAM_0_MPORT_en & memRAM_0_MPORT_mask) begin
-      memRAM_0[memRAM_0_MPORT_addr] <= memRAM_0_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+      memRAM_0[memRAM_0_MPORT_addr] <= memRAM_0_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
     end
     memRAM_0_readRAM_MPORT_en_pipe_0 <= 1'h1;
     if (1'h1) begin
       memRAM_0_readRAM_MPORT_addr_pipe_0 <= adressMasked[13:0];
     end
     if (memRAM_1_MPORT_en & memRAM_1_MPORT_mask) begin
-      memRAM_1[memRAM_1_MPORT_addr] <= memRAM_1_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+      memRAM_1[memRAM_1_MPORT_addr] <= memRAM_1_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
     end
     memRAM_1_readRAM_MPORT_en_pipe_0 <= 1'h1;
     if (1'h1) begin
       memRAM_1_readRAM_MPORT_addr_pipe_0 <= adressMasked[13:0];
     end
     if (memRAM_2_MPORT_en & memRAM_2_MPORT_mask) begin
-      memRAM_2[memRAM_2_MPORT_addr] <= memRAM_2_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+      memRAM_2[memRAM_2_MPORT_addr] <= memRAM_2_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
     end
     memRAM_2_readRAM_MPORT_en_pipe_0 <= 1'h1;
     if (1'h1) begin
       memRAM_2_readRAM_MPORT_addr_pipe_0 <= adressMasked[13:0];
     end
     if (memRAM_3_MPORT_en & memRAM_3_MPORT_mask) begin
-      memRAM_3[memRAM_3_MPORT_addr] <= memRAM_3_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 448:29]
+      memRAM_3[memRAM_3_MPORT_addr] <= memRAM_3_MPORT_data; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 483:29]
     end
     memRAM_3_readRAM_MPORT_en_pipe_0 <= 1'h1;
     if (1'h1) begin
       memRAM_3_readRAM_MPORT_addr_pipe_0 <= adressMasked[13:0];
     end
-    addrRom <= adressMasked == io_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 462:29]
+    addrRom <= adressMasked == io_addr; // @[\\src\\main\\scala\\gcd\\rv_cpu.scala 497:29]
   end
 // Register and memory initialization
 `ifdef RANDOMIZE_GARBAGE_ASSIGN

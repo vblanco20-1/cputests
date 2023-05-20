@@ -120,23 +120,40 @@ class CPUwRam(memoryFile: String = "") extends Module {
     val db_r2 = Output(UInt(32.W))
     val db_pc = Output(UInt(32.W))
 
+    val dbg_1 = Output(UInt(32.W))
+    val dbg_2 = Output(UInt(32.W))
+    val dbg_3 = Output(UInt(32.W))
+    val dbg_4 = Output(UInt(32.W))
+
     val halted = Output(Bool())
   })
 
   val inner = Module(new RiscvCPU)
   val ram   = Module(new BlockRam(memoryFile))
+  val csr = Module(new PlatformCSR)
 
   io.halted := inner.io.halted
   io.db_pc := inner.io.db_pc
   io.db_r1 := inner.io.db_r1
   io.db_r2 := inner.io.db_r2
 
+  io.dbg_1 :=  csr.io.dbg_1
+  io.dbg_2 :=  csr.io.dbg_2
+  io.dbg_3 :=  csr.io.dbg_3
+  io.dbg_4 :=  csr.io.dbg_4
+
   ram.io.addr := inner.io.mAddr
   ram.io.mask := inner.io.mMask
   ram.io.in   := inner.io.mOut
   ram.io.write := inner.io.mWrite
 
+   csr.io.din := inner.io.csr_data
+   csr.io.csr_id := inner.io.csr_id
+   csr.io.write := inner.io.csr_write
+   csr.io.newInst := inner.io.csr_newInst // for instruction counter register
+
   inner.io.mIn := ram.io.out
+  inner.io.csr_read := csr.io.dout
 }
 class AluTest extends AnyFreeSpec with ChiselScalatestTester /*with Matchers */{
 
@@ -324,6 +341,32 @@ class CPUTest extends AnyFreeSpec with ChiselScalatestTester {
       dut.io.halted.expect(true.B)
       dut.io.db_r1.expect(0.U)
       dut.io.db_r2.expect("h22".U)
+      //dut.io.db_pc.expect(48.U)
+    }
+  }
+
+  "CPU csr read test" in {
+    test(new CPUwRam("asm\\csr_reads.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 30) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+     // dut.io.db_r1.expect(0.U)
+      dut.io.db_r2.expect(5.U)
+      //dut.io.db_pc.expect(48.U)
+    }
+  }
+
+  "CPU csr writes test" in {
+    test(new CPUwRam("asm\\csr_writes.txt")).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+      for (a <- 0 until 30) {
+        dut.clock.step()
+      }
+      dut.io.halted.expect(true.B)
+      dut.io.db_r1.expect(0.U)
+      dut.io.db_r2.expect("hCC".U)
       //dut.io.db_pc.expect(48.U)
     }
   }

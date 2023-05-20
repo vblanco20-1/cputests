@@ -70,6 +70,8 @@ run_assembler('load_imm_01')
 run_assembler('load_memory_01')
 run_assembler('load_store_memory_01')
 run_assembler('load_store_memory_02')
+run_assembler('csr_reads')
+run_assembler('csr_writes')
 
 #assemble entry point
 #stream = os.popen("riscv64-unknown-elf-as entry.s -o entry.o -march=rv32i")
